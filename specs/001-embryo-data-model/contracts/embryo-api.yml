@@ -1,0 +1,303 @@
+openapi: 3.1.0
+info:
+  title: Embrion — Embryo API
+  version: 1.0.0
+  description: >
+    Embryo record management endpoints.
+    Role-based field visibility is enforced by the server — patients receive
+    projected responses (see role visibility matrix in data-model.md).
+
+servers:
+  - url: /api/v1
+
+tags:
+  - name: embryo
+    description: Embryo record operations
+
+paths:
+  /embryos:
+    get:
+      summary: List embryos
+      description: >
+        Returns embryos visible to the caller. Patients receive only their
+        assigned catalog (linked via access token). Coordinators and Admins
+        receive the full list filtered by query parameters.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, reserved, used]
+        - name: eye_color
+          in: query
+          schema:
+            type: string
+        - name: hair_color
+          in: query
+          schema:
+            type: string
+        - name: blood_type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of embryos (fields projected per caller role)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EmbryoProjected"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /embryos/{id}:
+    get:
+      summary: Get embryo by ID
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmbryoId"
+      responses:
+        "200":
+          description: Embryo record (fields projected per caller role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbryoProjected"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /embryos/{id}/status:
+    patch:
+      summary: Update embryo status
+      description: >
+        Changes embryo status. Permitted transitions: available→reserved,
+        reserved→available, available→used, reserved→used.
+        The `used` status is terminal.
+        Restricted to Coordinator and Admin roles.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmbryoId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [available, reserved, used]
+                reservation_expiry:
+                  type: string
+                  format: date-time
+                  description: Required when status = reserved.
+      responses:
+        "200":
+          description: Updated embryo record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbryoProjected"
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Concurrent reservation conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /embryos/{id}/delete:
+    post:
+      summary: Soft-delete embryo (anonymise donor data)
+      description: >
+        Marks the embryo as deleted and nullifies donor personal fields.
+        Medical data is retained for audit. Restricted to Admin role only.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmbryoId"
+      responses:
+        "204":
+          description: Embryo soft-deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /schema/manifest:
+    get:
+      summary: Get current schema version manifest
+      description: >
+        Returns the schema manifest without accessing individual embryo records.
+        Satisfies SC-005.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Schema manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchemaManifest"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    EmbryoId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    EmbryoProjected:
+      description: >
+        Embryo record with fields projected according to caller role.
+        Restricted fields are absent (not null) from the response.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Coordinator + Admin only"
+        status:
+          type: string
+          enum: [available, reserved, used]
+        egg_donor:
+          type: object
+          description: Donor phenotype fields (all roles)
+        sperm_donor:
+          type: object
+          description: Donor phenotype fields (all roles)
+        phenotype:
+          type: object
+        genetics:
+          type: object
+          description: >
+            Patient sees only screening_status.
+            Coordinator + Admin see full genetics object.
+        medical:
+          type: object
+        matching:
+          type: object
+        media:
+          type: object
+        meta:
+          type: object
+          description: "Coordinator + Admin only"
+
+    SchemaManifest:
+      type: object
+      required: [version, effective_date, changelog]
+      properties:
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          example: "1.0.0"
+        effective_date:
+          type: string
+          format: date
+          example: "2026-05-01"
+        changelog:
+          type: array
+          items:
+            type: object
+            required: [version, date, changes]
+            properties:
+              version:
+                type: string
+              date:
+                type: string
+                format: date
+              changes:
+                type: array
+                items:
+                  type: string
+
+    ValidationError:
+      type: object
+      required: [error, fields]
+      properties:
+        error:
+          type: string
+          example: "Validation failed"
+        fields:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                example: "medical.quality_grade"
+              message:
+                type: string
+                example: "Required field is missing"
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Caller role does not have permission for this operation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Embryo not found or soft-deleted
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

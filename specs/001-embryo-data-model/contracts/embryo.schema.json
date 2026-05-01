@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "embrion/embryo",
+  "title": "Embryo",
+  "description": "Embryo record as stored and returned by the Embrion system. Version 1.0.0.",
+  "x-schema-version": "1.0.0",
+  "x-effective-date": "2026-05-01",
+  "type": "object",
+  "required": [
+    "id", "status", "creation_date", "clinic_id",
+    "egg_donor", "sperm_donor",
+    "genetics", "medical", "media", "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "System-generated unique identifier. Restricted: Coordinator + Admin."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["available", "reserved", "used"],
+      "description": "Lifecycle status. Visible to all roles."
+    },
+    "creation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp — set at creation, immutable. Restricted: Coordinator + Admin."
+    },
+    "clinic_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Owning clinic. Restricted: Coordinator + Admin."
+    },
+    "sex": {
+      "type": "string",
+      "enum": ["male", "female", "unknown"],
+      "description": "Embryo sex. Restricted: Coordinator + Admin only."
+    },
+    "egg_donor": {
+      "type": "object",
+      "description": "Embedded egg donor data. Visible to all roles.",
+      "required": ["age", "blood_type", "height", "eye_color", "hair_color"],
+      "additionalProperties": false,
+      "properties": {
+        "age": { "type": "integer", "minimum": 18, "maximum": 45 },
+        "blood_type": { "$ref": "#/$defs/BloodType" },
+        "education": { "type": "string" },
+        "ethnicity": { "type": "string" },
+        "height": { "type": "integer", "minimum": 140, "maximum": 200, "description": "cm" },
+        "eye_color": { "$ref": "#/$defs/EyeColor" },
+        "hair_color": { "$ref": "#/$defs/HairColor" }
+      }
+    },
+    "sperm_donor": {
+      "type": "object",
+      "description": "Embedded sperm donor data. Visible to all roles.",
+      "required": ["age", "blood_type", "height", "eye_color", "hair_color"],
+      "additionalProperties": false,
+      "properties": {
+        "age": { "type": "integer", "minimum": 18, "maximum": 80 },
+        "blood_type": { "$ref": "#/$defs/BloodType" },
+        "education": { "type": "string" },
+        "ethnicity": { "type": "string" },
+        "height": { "type": "integer", "minimum": 140, "maximum": 210, "description": "cm" },
+        "eye_color": { "$ref": "#/$defs/EyeColor" },
+        "hair_color": { "$ref": "#/$defs/HairColor" }
+      }
+    },
+    "phenotype": {
+      "type": "object",
+      "description": "Predicted phenotype. Derived from donor fields if not provided. Visible to all roles.",
+      "additionalProperties": false,
+      "properties": {
+        "eye_color": { "oneOf": [{ "$ref": "#/$defs/EyeColor" }, { "type": "null" }] },
+        "hair_color": { "oneOf": [{ "$ref": "#/$defs/HairColor" }, { "type": "null" }] },
+        "height_range": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["min", "max"],
+              "properties": {
+                "min": { "type": "integer" },
+                "max": { "type": "integer" }
+              },
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "skin_tone": { "oneOf": [{ "$ref": "#/$defs/SkinTone" }, { "type": "null" }] }
+      }
+    },
+    "genetics": {
+      "type": "object",
+      "description": "Genetic screening data. screening_status visible to all; other fields restricted to Coordinator + Admin.",
+      "required": ["screening_status", "chromosomal_abnormalities"],
+      "additionalProperties": false,
+      "properties": {
+        "screening_status": { "$ref": "#/$defs/ScreeningStatus" },
+        "chromosomal_abnormalities": {
+          "type": "boolean",
+          "description": "Restricted: Coordinator + Admin only."
+        },
+        "risk_factors": {
+          "type": "array",
+          "description": "Restricted: Coordinator + Admin only.",
+          "items": {
+            "type": "object",
+            "required": ["name", "severity"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+            }
+          }
+        }
+      }
+    },
+    "medical": {
+      "type": "object",
+      "description": "Medical data. Visible to all roles.",
+      "required": ["quality_grade", "development_stage", "freeze_date"],
+      "additionalProperties": false,
+      "properties": {
+        "quality_grade": { "type": "string", "enum": ["A", "B", "C"] },
+        "development_stage": { "$ref": "#/$defs/DevelopmentStage" },
+        "freeze_date": { "type": "string", "format": "date" }
+      }
+    },
+    "matching": {
+      "type": "object",
+      "description": "Blood type compatibility. compatible_blood_types visible to all; notes restricted.",
+      "additionalProperties": false,
+      "properties": {
+        "compatible_blood_types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BloodType" }
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "description": "Internal clinic notes. Restricted: Coordinator + Admin only."
+        }
+      }
+    },
+    "media": {
+      "type": "object",
+      "description": "Media references. Visible to all roles.",
+      "required": ["donor_photo_available"],
+      "additionalProperties": false,
+      "properties": {
+        "embryo_image_url": { "type": ["string", "null"], "format": "uri" },
+        "donor_photo_available": { "type": "boolean" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Record metadata. All fields restricted to Coordinator + Admin except deleted_at which is Admin only.",
+      "required": ["schema_version"],
+      "additionalProperties": false,
+      "properties": {
+        "reservation_expiry": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Restricted: Coordinator + Admin."
+        },
+        "priority_score": {
+          "type": ["number", "null"],
+          "description": "Restricted: Coordinator + Admin."
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semver of schema active at record write time. Restricted: Coordinator + Admin."
+        },
+        "deleted_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Soft-delete timestamp. Restricted: Admin only."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "BloodType": {
+      "type": "string",
+      "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+    },
+    "EyeColor": {
+      "type": "string",
+      "enum": ["blue", "green", "brown", "hazel", "grey", "other"]
+    },
+    "HairColor": {
+      "type": "string",
+      "enum": ["black", "dark_brown", "brown", "light_brown", "blonde", "red", "grey", "other"]
+    },
+    "SkinTone": {
+      "type": "string",
+      "enum": ["very_fair", "fair", "medium", "olive", "brown", "dark"]
+    },
+    "ScreeningStatus": {
+      "type": "string",
+      "enum": ["passed", "failed", "pending", "not_performed"]
+    },
+    "DevelopmentStage": {
+      "type": "string",
+      "enum": ["zygote", "cleavage", "morula", "blastocyst", "expanded_blastocyst"]
+    }
+  }
+}
