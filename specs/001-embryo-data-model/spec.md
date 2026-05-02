@@ -8,7 +8,7 @@ statuses, donor field inheritance rules, storage-level validation)
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 — Doctor curates embryo catalog for a patient (Priority: P1)
+### User Story 1 — Doctor/Coordinator curates embryo catalog for a patient (Priority: P1)
 
 A doctor opens the clinic's admin interface, views a list of available embryos, and
 confirms that the data displayed matches the agreed data model: all required fields are
@@ -136,9 +136,9 @@ retrievable immediately after creation.
 - **FR-002**: The system MUST enforce a role visibility matrix: fields marked as
   patient-hidden MUST NOT be returned in any patient-facing response.
 - **FR-003**: The `sex` field MUST be accessible only to coordinator and admin roles.
-- **FR-003a**: Within the Genetics sub-record, `chromosomal_abnormalities` and `risk_factors`
-  MUST be accessible only to coordinator and admin roles. The `screening_status` field
-  MUST be visible to all roles including patient.
+- **FR-003** *(extended)*: Within the Genetics sub-record, `chromosomal_abnormalities` and
+  `risk_factors` MUST be accessible only to coordinator and admin roles. The
+  `screening_status` field MUST be visible to all roles including patient.
 - **FR-004**: Embryo status MUST be one of: `available`, `reserved`, or `used`. No other
   values are permitted.
 - **FR-005**: Status transitions MUST be restricted: only coordinator and admin roles can
@@ -166,6 +166,14 @@ retrievable immediately after creation.
   be replaced with null, and embryo medical fields MUST be retained. Soft-deleted records
   MUST NOT appear in any patient-facing or coordinator catalog view. Only admin role may
   initiate a soft-delete.
+- **FR-012**: The system MUST provide a create-record operation accessible to coordinator
+  and admin roles. The operation MUST accept a full embryo record, validate it against the
+  schema (FR-007), apply inheritance rules (FR-006), and return the persisted record.
+  Patient role MUST be rejected with a permission error.
+- **FR-013**: The system MUST provide an update-record operation accessible to coordinator
+  and admin roles. The operation MUST accept a partial embryo record (non-status fields
+  only — status changes are handled exclusively by FR-005) and persist the changes.
+  Patient role MUST be rejected with a permission error.
 
 ### Key Entities
 
@@ -208,9 +216,8 @@ retrievable immediately after creation.
 - **SC-002**: A patient-role access attempt for any embryo returns zero restricted fields
   (including `sex`, internal IDs, `chromosomal_abnormalities`, `risk_factors`) and
   returns `screening_status` — verifiable by automated role matrix tests.
-- **SC-003**: A coordinator-role status change request for any embryo succeeds within the
-  normal response time window; a patient-role status change request is rejected 100% of
-  the time.
+- **SC-003**: A coordinator-role status change request for any embryo completes with p95
+  latency < 200ms; a patient-role status change request is rejected 100% of the time.
 - **SC-004**: Every invalid embryo record submitted to the system produces a validation
   error that names the failing field — verifiable by submitting records with each required
   field missing in turn.

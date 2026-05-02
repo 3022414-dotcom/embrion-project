@@ -6,6 +6,7 @@ description: "Task list for F-01 — Embryo Data Model"
 
 **Input**: Design documents from `specs/001-embryo-data-model/`
 **Prerequisites**: plan.md ✅, spec.md ✅, data-model.md ✅, contracts/ ✅, research.md ✅
+**Revised**: 2026-05-02 — added FR-012/013 (create/update), fixed T036 migration, renumbered Polish phase
 
 **Tests**: Included — required by Constitution Principle II (TDD NON-NEGOTIABLE).
 Tests MUST be written first and MUST fail before implementation begins.
@@ -116,8 +117,8 @@ All user stories depend on this phase. No US work begins until T022 is complete.
 
 ## Phase 5: User Story 3 — Admin manages embryo records (Priority: P3)
 
-**Goal**: Status transitions enforced; soft-delete with donor anonymisation; storage validation rejects invalid records.
-**Independent Test**: (a) Coordinator PATCH status `reserved→available` succeeds; patient PATCH returns 403. (b) Admin soft-delete nullifies donor fields, retains medical fields. (c) POST with missing `medical.quality_grade` returns 400 naming the field.
+**Goal**: Create + edit + delete embryo records; status transitions enforced; storage validation rejects invalid records.
+**Independent Test**: (a) `POST /embryos` with valid body returns 201 with derived phenotype; missing required field returns 400 naming it. (b) `PATCH /embryos/:id` updates fields; patient returns 403. (c) Coordinator `PATCH /status` `reserved→available` succeeds; patient returns 403. (d) Admin soft-delete nullifies donor fields, retains medical fields.
 
 ### Tests for US3 — write first, must fail ⚠️
 
@@ -128,11 +129,17 @@ All user stories depend on this phase. No US work begins until T022 is complete.
 ### Implementation for US3
 
 - [ ] T035 [US3] Add status FSM to `apps/api/src/modules/embryo/embryo.service.ts` — `changeStatus(id, newStatus, actorId, role)`: validate permitted transitions table from data-model.md; reject forbidden transitions with 400; reject non-coordinator/admin with 403; optimistic locking for concurrent reservation (409 on conflict)
-- [ ] T036 [US3] Add audit log in `apps/api/src/modules/embryo/embryo.service.ts` — `logStatusChange(embryoId, fromStatus, toStatus, actorId, actorRole, timestamp)` satisfying FR-009; write to `embryo_status_log` table (add column to migration or new migration file `apps/api/src/db/migrations/002_embryo_status_log.sql`)
+- [ ] T036 [US3] Add audit log in `apps/api/src/modules/embryo/embryo.service.ts` — `logStatusChange(embryoId, fromStatus, toStatus, actorId, actorRole, timestamp)` satisfying FR-009; create `apps/api/src/db/migrations/002_embryo_status_log.sql` with `CREATE TABLE embryo_status_log (id UUID PK, embryo_id UUID, from_status, to_status, actor_id, actor_role, changed_at TIMESTAMPTZ)`
 - [ ] T037 [US3] Add `PATCH /api/v1/embryos/:id/status` handler in `apps/api/src/modules/embryo/embryo.router.ts` — parse body with Zod, call service, return updated projected record
 - [ ] T038 [US3] Add soft-delete logic to `apps/api/src/modules/embryo/embryo.service.ts` — `softDelete(id, actorId, role)`: admin only; set `meta.deleted_at`; null out all `egg_donor.*` and `sperm_donor.*` and `phenotype.*` columns; if status was `reserved` transition to `available` first (audit logged)
 - [ ] T039 [US3] Add `POST /api/v1/embryos/:id/delete` handler in `apps/api/src/modules/embryo/embryo.router.ts` — admin only (403 otherwise); call softDelete service; return 204
-- [ ] T040 [US3] Run US3 integration tests — T032, T033, T034 must now pass (green)
+- [ ] T040 [P] [US3] Write `apps/api/tests/integration/embryo-create.test.ts` — `POST /api/v1/embryos`: valid payload returns 201 with derived phenotype populated; missing `medical.quality_grade` returns 400 with field name; patient token returns 403. Must fail.
+- [ ] T041 [P] [US3] Write `apps/api/tests/integration/embryo-update.test.ts` — `PATCH /api/v1/embryos/:id`: coordinator updates `medical.quality_grade`; assert field changed in response; attempt to set `status` field returns 400; patient token returns 403. Must fail.
+- [ ] T042 [US3] Add `createRecord(payload, actorId, role)` to `apps/api/src/modules/embryo/embryo.service.ts` — coordinator + admin only; validate against full Zod schema; run inheritance transform; stamp `meta.schema_version`; persist via repository; return projected record
+- [ ] T043 [US3] Add `POST /api/v1/embryos` handler in `apps/api/src/modules/embryo/embryo.router.ts` — coordinator + admin only (403 otherwise); parse body with Zod; call `createRecord` service; return 201 with projected record
+- [ ] T044 [US3] Add `updateRecord(id, partial, actorId, role)` to `apps/api/src/modules/embryo/embryo.service.ts` — coordinator + admin only; validate partial with Zod partial schema; reject if `status` field present (400 — use status endpoint); persist changes; return projected record
+- [ ] T045 [US3] Add `PATCH /api/v1/embryos/:id` handler in `apps/api/src/modules/embryo/embryo.router.ts` — coordinator + admin only (403 otherwise); parse partial body; call `updateRecord` service; return 200
+- [ ] T046 [US3] Run all US3 integration tests — T032, T033, T034, T040, T041 must now pass (green)
 
 **Checkpoint**: All three user stories independently functional and testable. ✅
 
@@ -142,13 +149,13 @@ All user stories depend on this phase. No US work begins until T022 is complete.
 
 **Purpose**: Developer tooling, documentation completeness, CI pipeline.
 
-- [ ] T041 [P] Add `generate:json-schema` script in `packages/schema/package.json` using `zod-to-json-schema`; run it to verify `contracts/embryo.schema.json` matches current Zod schema
-- [ ] T042 [P] Configure ESLint in root with `@typescript-eslint/recommended`; add `lint` task to `turbo.json` pipeline
-- [ ] T043 [P] Configure Vitest coverage thresholds in `packages/schema/vitest.config.ts` (branches: 90, functions: 95, lines: 90)
-- [ ] T044 [P] Update `apps/web/src/types/embryo.ts` to re-export `EmbryoForPatient` and relevant enums from `@embrion/schema`
-- [ ] T045 Run `quickstart.md` smoke validation — follow every code block in `specs/001-embryo-data-model/quickstart.md`; fix any steps that fail
-- [ ] T046 Run full test suite: `pnpm test` — all tests green, coverage thresholds met
-- [ ] T047 [P] Final `tsc --noEmit` across all workspaces — zero type errors
+- [ ] T047 [P] Add `generate:json-schema` script in `packages/schema/package.json` using `zod-to-json-schema`; run it to verify `contracts/embryo.schema.json` matches current Zod schema
+- [ ] T048 [P] Configure ESLint in root with `@typescript-eslint/recommended`; add `lint` task to `turbo.json` pipeline
+- [ ] T049 [P] Configure Vitest coverage thresholds in `packages/schema/vitest.config.ts` (branches: 90, functions: 95, lines: 90)
+- [ ] T050 [P] Update `apps/web/src/types/embryo.ts` to re-export `EmbryoForPatient` and relevant enums from `@embrion/schema`
+- [ ] T051 Run `quickstart.md` smoke validation — follow every code block in `specs/001-embryo-data-model/quickstart.md`; fix any steps that fail; verify FR-010 field documentation in `data-model.md` matches `embryo.types.ts`
+- [ ] T052 Run full test suite: `pnpm test` — all tests green, coverage thresholds met
+- [ ] T053 [P] Final `tsc --noEmit` across all workspaces — zero type errors
 
 ---
 
@@ -183,7 +190,7 @@ T012, T013, T014, T015  # implement in parallel (T012 first, others depend on it
 # Phase 3 + 4 + 5 — all three user stories after Phase 2
 T021, T022  # US1 tests in parallel
 # US2 starts T028 concurrently with US1 T021-T022 if separate developer
-# US3 starts T032, T033, T034 concurrently
+# US3 starts T032, T033, T034, T040, T041 concurrently
 ```
 
 ---

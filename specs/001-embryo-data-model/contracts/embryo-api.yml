@@ -16,6 +16,39 @@ tags:
 
 paths:
   /embryos:
+    post:
+      summary: Create embryo record
+      description: >
+        Creates a new embryo record. Validates against full schema (FR-007),
+        applies donor field inheritance rules (FR-006), sets `meta.schema_version`
+        to current manifest version. Restricted to Coordinator and Admin roles.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbryoCreate"
+      responses:
+        "201":
+          description: Created embryo record (fields projected per caller role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbryoProjected"
+        "400":
+          description: Validation failed — missing or invalid field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
     get:
       summary: List embryos
       description: >
@@ -61,6 +94,43 @@ paths:
           $ref: "#/components/responses/Forbidden"
 
   /embryos/{id}:
+    patch:
+      summary: Update embryo record fields
+      description: >
+        Updates non-status fields of an embryo record (partial update).
+        Status changes MUST use PATCH /embryos/{id}/status instead.
+        Restricted to Coordinator and Admin roles.
+      tags: [embryo]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmbryoId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbryoUpdate"
+      responses:
+        "200":
+          description: Updated embryo record (fields projected per caller role)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbryoProjected"
+        "400":
+          description: Validation failed or attempt to update status via this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     get:
       summary: Get embryo by ID
       tags: [embryo]
@@ -191,6 +261,59 @@ components:
         format: uuid
 
   schemas:
+    EmbryoCreate:
+      description: >
+        Payload for creating a new embryo record. `egg_donor`, `sperm_donor`,
+        `genetics`, `medical`, and `media` are required. `phenotype` fields
+        are optional — derived from donor data if absent (FR-006).
+        `meta` fields are set by the server.
+      type: object
+      required: [egg_donor, sperm_donor, genetics, medical, media]
+      properties:
+        sex:
+          type: string
+          enum: [male, female, unknown]
+          description: "Coordinator + Admin only"
+        egg_donor:
+          type: object
+        sperm_donor:
+          type: object
+        phenotype:
+          type: object
+          description: Optional — server derives from donors if absent
+        genetics:
+          type: object
+        medical:
+          type: object
+        matching:
+          type: object
+        media:
+          type: object
+
+    EmbryoUpdate:
+      description: >
+        Partial update payload. All fields optional. `status` MUST NOT be
+        included — use PATCH /embryos/{id}/status instead.
+      type: object
+      properties:
+        sex:
+          type: string
+          enum: [male, female, unknown]
+        egg_donor:
+          type: object
+        sperm_donor:
+          type: object
+        phenotype:
+          type: object
+        genetics:
+          type: object
+        medical:
+          type: object
+        matching:
+          type: object
+        media:
+          type: object
+
     EmbryoProjected:
       description: >
         Embryo record with fields projected according to caller role.
