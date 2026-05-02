@@ -1,0 +1,32 @@
+{
+  "name": "@embrion/schema",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "clean": "rm -rf dist coverage",
+    "generate:json-schema": "node --experimental-vm-modules scripts/generate-schema.js"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
+    "vitest": "^1.6.0",
+    "zod-to-json-schema": "^3.23.0"
+  }
+}

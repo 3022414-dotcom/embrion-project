@@ -1,0 +1,430 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/$defs/Embryo",
+  "$defs": {
+    "Embryo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "available",
+            "reserved",
+            "used"
+          ]
+        },
+        "creation_date": {
+          "type": "string"
+        },
+        "clinic_id": {
+          "type": "string"
+        },
+        "sex": {
+          "type": "string",
+          "enum": [
+            "male",
+            "female",
+            "unknown"
+          ]
+        },
+        "egg_donor": {
+          "type": "object",
+          "properties": {
+            "age": {
+              "type": "integer",
+              "minimum": 18,
+              "maximum": 45
+            },
+            "blood_type": {
+              "type": "string",
+              "enum": [
+                "A+",
+                "A-",
+                "B+",
+                "B-",
+                "AB+",
+                "AB-",
+                "O+",
+                "O-"
+              ]
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 140,
+              "maximum": 200
+            },
+            "eye_color": {
+              "type": "string",
+              "enum": [
+                "blue",
+                "green",
+                "brown",
+                "hazel",
+                "grey",
+                "other"
+              ]
+            },
+            "hair_color": {
+              "type": "string",
+              "enum": [
+                "black",
+                "dark_brown",
+                "brown",
+                "light_brown",
+                "blonde",
+                "red",
+                "grey",
+                "other"
+              ]
+            },
+            "education": {
+              "type": "string"
+            },
+            "ethnicity": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age",
+            "blood_type",
+            "height",
+            "eye_color",
+            "hair_color"
+          ],
+          "additionalProperties": false
+        },
+        "sperm_donor": {
+          "type": "object",
+          "properties": {
+            "age": {
+              "type": "integer",
+              "minimum": 18,
+              "maximum": 80
+            },
+            "blood_type": {
+              "type": "string",
+              "enum": [
+                "A+",
+                "A-",
+                "B+",
+                "B-",
+                "AB+",
+                "AB-",
+                "O+",
+                "O-"
+              ]
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 140,
+              "maximum": 210
+            },
+            "eye_color": {
+              "type": "string",
+              "enum": [
+                "blue",
+                "green",
+                "brown",
+                "hazel",
+                "grey",
+                "other"
+              ]
+            },
+            "hair_color": {
+              "type": "string",
+              "enum": [
+                "black",
+                "dark_brown",
+                "brown",
+                "light_brown",
+                "blonde",
+                "red",
+                "grey",
+                "other"
+              ]
+            },
+            "education": {
+              "type": "string"
+            },
+            "ethnicity": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age",
+            "blood_type",
+            "height",
+            "eye_color",
+            "hair_color"
+          ],
+          "additionalProperties": false
+        },
+        "phenotype": {
+          "type": "object",
+          "properties": {
+            "eye_color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "blue",
+                    "green",
+                    "brown",
+                    "hazel",
+                    "grey",
+                    "other"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hair_color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "black",
+                    "dark_brown",
+                    "brown",
+                    "light_brown",
+                    "blonde",
+                    "red",
+                    "grey",
+                    "other"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "height_range": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "integer"
+                    },
+                    "max": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "min",
+                    "max"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "skin_tone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "very_fair",
+                    "fair",
+                    "medium",
+                    "olive",
+                    "brown",
+                    "dark"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "eye_color",
+            "hair_color",
+            "height_range",
+            "skin_tone"
+          ],
+          "additionalProperties": false
+        },
+        "genetics": {
+          "type": "object",
+          "properties": {
+            "screening_status": {
+              "type": "string",
+              "enum": [
+                "passed",
+                "failed",
+                "pending",
+                "not_performed"
+              ]
+            },
+            "chromosomal_abnormalities": {
+              "type": "boolean"
+            },
+            "risk_factors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "severity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "screening_status",
+            "chromosomal_abnormalities"
+          ],
+          "additionalProperties": false
+        },
+        "medical": {
+          "type": "object",
+          "properties": {
+            "quality_grade": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "development_stage": {
+              "type": "string",
+              "enum": [
+                "zygote",
+                "cleavage",
+                "morula",
+                "blastocyst",
+                "expanded_blastocyst"
+              ]
+            },
+            "freeze_date": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quality_grade",
+            "development_stage",
+            "freeze_date"
+          ],
+          "additionalProperties": false
+        },
+        "matching": {
+          "type": "object",
+          "properties": {
+            "compatible_blood_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "A+",
+                  "A-",
+                  "B+",
+                  "B-",
+                  "AB+",
+                  "AB-",
+                  "O+",
+                  "O-"
+                ]
+              }
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "media": {
+          "type": "object",
+          "properties": {
+            "embryo_image_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "donor_photo_available": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "donor_photo_available"
+          ],
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "reservation_expiry": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "priority_score": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "schema_version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "deleted_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "schema_version"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "creation_date",
+        "clinic_id",
+        "egg_donor",
+        "sperm_donor",
+        "genetics",
+        "medical",
+        "media",
+        "meta"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "title": "Embryo",
+  "description": "Full embryo record schema — v1.0.0",
+  "version": "1.0.0"
+}
