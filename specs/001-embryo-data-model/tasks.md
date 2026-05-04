@@ -150,7 +150,7 @@ All user stories depend on this phase. No US work begins until T022 is complete.
 **Purpose**: Developer tooling, documentation completeness, CI pipeline.
 
 - [x] T047 [P] Add `generate:json-schema` script in `packages/schema/package.json` using `zod-to-json-schema`; run it to verify `contracts/embryo.schema.json` matches current Zod schema
-- [ ] T048 [P] Configure ESLint in root with `@typescript-eslint/recommended`; add `lint` task to `turbo.json` pipeline
+- [x] T048 [P] Configure ESLint in root with `@typescript-eslint/recommended`; add `lint` task to `turbo.json` pipeline
 - [x] T049 [P] Configure Vitest coverage thresholds in `packages/schema/vitest.config.ts` (branches: 90, functions: 95, lines: 90)
 - [x] T050 [P] Update `apps/web/src/types/embryo.ts` to re-export `EmbryoForPatient` and relevant enums from `@embrion/schema`
 - [x] T051 Run `quickstart.md` smoke validation — follow every code block in `specs/001-embryo-data-model/quickstart.md`; fix any steps that fail; verify FR-010 field documentation in `data-model.md` matches `embryo.types.ts`

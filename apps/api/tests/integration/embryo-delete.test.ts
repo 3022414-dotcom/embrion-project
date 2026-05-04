@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { buildApp } from "../../src/app.js";
-import { create, findByIdIncludeDeleted } from "../../src/modules/embryo/embryo.repository.js";
+import { create } from "../../src/modules/embryo/embryo.repository.js";
 import { signTestToken } from "../helpers/auth.js";
 
 const MIGRATION_PATH = join(

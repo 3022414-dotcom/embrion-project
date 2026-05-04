@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(npm install *)",
+      "Bash(docker info *)",
+      "Bash(npx tsc *)",
+      "Bash(pnpm --filter @embrion/api typecheck)",
+      "Bash(pnpm --filter @embrion/web typecheck)",
+      "Bash(pnpm --filter @embrion/schema test:coverage)",
+      "PowerShell(& \"C:\\\\Program Files\\\\PostgreSQL\\\\16\\\\bin\\\\psql.exe\" -U postgres -c \"\\\\conninfo\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\PostgreSQL\\\\16\\\\bin\\\\psql.exe\" -U postgres -w -c \"SELECT version\\(\\);\" 2>&1)",
+      "PowerShell($pgData = \"C:\\\\Program Files\\\\PostgreSQL\\\\16\\\\data\"; if \\(Test-Path \"$pgData\\\\pg_hba.conf\"\\) { Get-Content \"$pgData\\\\pg_hba.conf\" | Where-Object { $_ -notmatch '^#' -and $_.Trim\\(\\) -ne '' } })"
+    ]
+  }
+}
