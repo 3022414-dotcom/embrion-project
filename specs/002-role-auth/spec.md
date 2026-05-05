@@ -1,9 +1,25 @@
-# Feature Specification: F-02 — Role Model and Authorization
+# Feature Specification: F-02 — Authorization Layer: Role Enforcement, Patient Token-Link, and Clinic Isolation
 
 **Feature Branch**: `002-role-auth`
 **Created**: 2026-05-05
 **Status**: Draft
 **Input**: User description: "F-02 — Role Model and Authorization. 3 roles: patient / doctor / admin. Token-link with TTL bound to one patient. Role-based permissions matrix. Role-check middleware. Acceptance criteria: expired token → 401; one token → one patient; doctor cannot see data from another clinic; permissions enforced server-side not only in UI."
+
+## Scope
+
+**This feature covers: AUTHORIZATION only.**
+
+| In scope ✅ | Out of scope ❌ |
+|-------------|----------------|
+| Role definitions (`patient`, `coordinator`, `admin`) and permissions matrix | Coordinator / admin login (credentials, password, session issuance) → F-03 |
+| Patient access via time-limited token-link (opaque token, validated against DB) | Token delivery to patient (email, SMS, QR) → separate delivery feature |
+| JWT validation middleware — verifying `{ sub, role, clinic_id }` claims on coordinator/admin requests | JWT issuance endpoint (login form) → F-03 |
+| Clinic isolation — scoping all coordinator queries to their clinic | Selection management UI (add/remove embryos) → catalog feature |
+| PatientSelection data model and access scoping | |
+| Role-check middleware refactor (extracting F-01 inline checks into reusable middleware) | |
+| Audit logging of token lifecycle and failed access attempts | |
+
+> **Dependency note**: F-02 tests use pre-signed test JWTs with the defined payload `{ sub, role, clinic_id }` — no login endpoint is required for testing. F-03 will implement the login endpoint that issues production JWTs matching this contract.
 
 ## User Scenarios & Testing *(mandatory)*
 
