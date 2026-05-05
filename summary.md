@@ -66,11 +66,13 @@ Each embryo record contains:
 
 ## Role Model
 
-| Role | Capabilities | Hidden from patients |
+System role names (canonical, used in code): `patient`, `coordinator`, `admin`.
+
+| Role (`coordinator` in code) | Capabilities | Hidden from patients |
 |------|-------------|----------------------|
 | **Patient** | Browse catalog, filter, view cards, favorite, submit request, chat | Embryo sex, sensitive medical data, internal IDs |
-| **Doctor / Coordinator** | Everything patient can + create selections, generate links, receive requests, reply in chat, view analytics, see hidden fields (sex, extended genetics) | — |
-| **Admin** | Everything doctor can + manage embryo/donor data, change embryo status, access logs and metrics | — |
+| **Coordinator** (doctors and coordinators share this role) | Everything patient can + create selections, generate links, receive requests, reply in chat, view analytics, see hidden fields (sex, extended genetics) | — |
+| **Admin** | Everything coordinator can + manage embryo/donor data, change embryo status, access logs and metrics | — |
 
 ---
 
