@@ -11,3 +11,9 @@ specs/002-role-auth/plan.md
 scenarios, role model (canonical role names: `patient`, `coordinator`, `admin`), and
 non-functional requirements. Every new feature must align with this document — role names,
 access flows, and capabilities defined there are authoritative.
+
+## Feature Backlog
+
+**REQUIRED**: Read `all-features.md` in the project root before starting any new feature.
+It lists all planned features with statuses, dependencies, and acceptance criteria.
+Use it to understand what is already built (F-01, F-02) and what the current feature depends on.
