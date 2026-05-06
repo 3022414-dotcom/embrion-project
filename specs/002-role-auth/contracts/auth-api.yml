@@ -1,0 +1,310 @@
+openapi: 3.1.0
+info:
+  title: Embrion Auth API — F-02
+  version: 1.0.0
+  description: |
+    Authorization endpoints: patient management, selection curation,
+    and patient token lifecycle. All coordinator/admin endpoints require
+    a Bearer JWT with claims { sub, role, clinic_id }. Patient endpoints
+    require a Bearer opaque token issued via POST /patients/:id/token.
+
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    coordinatorJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT with claims { sub, role ("coordinator"|"admin"), clinic_id }
+    patientToken:
+      type: http
+      scheme: bearer
+      description: Opaque 64-char hex token issued by POST /patients/:id/token
+
+  schemas:
+    Patient:
+      type: object
+      required: [id, clinic_id, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        clinic_id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PatientSelection:
+      type: object
+      required: [id, patient_id, clinic_id, embryo_ids, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        patient_id:
+          type: string
+          format: uuid
+        clinic_id:
+          type: string
+        embryo_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Ordered list of embryo UUIDs in this selection
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AccessTokenResponse:
+      type: object
+      required: [token_url, expires_at, patient_id]
+      properties:
+        token_url:
+          type: string
+          description: Full URL the patient uses to access their catalog
+          example: "https://app.clinic.com/catalog?token=abc123..."
+        token_value:
+          type: string
+          description: Raw 64-char hex token (include in Authorization header as Bearer)
+        expires_at:
+          type: string
+          format: date-time
+        patient_id:
+          type: string
+          format: uuid
+
+    Error401:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [Unauthorized, token_expired]
+
+    Error403:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Forbidden
+
+    Error404:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Not found
+
+paths:
+  /patients:
+    post:
+      summary: Create a patient record
+      description: |
+        Creates a minimal patient record bound to the coordinator's clinic.
+        Does not create credentials (login is out of scope for F-02).
+      security:
+        - coordinatorJwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Optional display name
+      responses:
+        '201':
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+        '403':
+          description: Insufficient role (patient token used)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+  /patients/{patientId}/selection:
+    get:
+      summary: Get the patient's current selection
+      security:
+        - coordinatorJwt: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current selection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientSelection'
+        '404':
+          description: Patient not found or no selection created yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    patch:
+      summary: Update the patient's selection (add/remove embryo IDs)
+      description: |
+        Replaces the full embryo_ids array. Send the complete desired list.
+        Changes take effect immediately for subsequent patient requests.
+      security:
+        - coordinatorJwt: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [embryo_ids]
+              properties:
+                embryo_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Updated selection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientSelection'
+        '400':
+          description: One or more embryo IDs not found in this clinic
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /patients/{patientId}/token:
+    post:
+      summary: Issue a patient access token
+      description: |
+        Issues a new opaque access token for the patient. If the patient already
+        has an active token, it is immediately revoked. A PatientSelection must
+        exist before a token can be issued.
+      security:
+        - coordinatorJwt: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ttl_days:
+                  type: integer
+                  minimum: 1
+                  maximum: 365
+                  default: 30
+                  description: Token time-to-live in days
+      responses:
+        '201':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '400':
+          description: No selection exists for this patient
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Revoke the patient's active token
+      description: |
+        Immediately revokes the patient's active token. The patient cannot
+        access their catalog after this call. Returns 204 even if no active
+        token exists (idempotent).
+      security:
+        - coordinatorJwt: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Token revoked (or no active token existed)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error401'
+    Forbidden:
+      description: Caller's role is not permitted for this endpoint
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error403'
+    NotFound:
+      description: Resource not found (or belongs to another clinic)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error404'

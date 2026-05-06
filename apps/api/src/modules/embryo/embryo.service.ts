@@ -1,40 +1,43 @@
 import type postgres from "postgres";
-import type { Role } from "@embrion/schema";
 import { CreateEmbryoSchema, CURRENT_SCHEMA_VERSION } from "@embrion/schema";
 import type { z } from "zod";
 import * as repo from "./embryo.repository.js";
 import { projectForCaller } from "./embryo.projection.js";
+import type { CallerContext } from "../../middleware/auth-hook.js";
 
 type Sql = postgres.Sql;
 
-export async function getById(sql: Sql, id: string, role: Role) {
-  const embryo = role === "admin"
-    ? await repo.findByIdIncludeDeleted(sql, id)
-    : await repo.findById(sql, id);
-  if (!embryo) return null;
-  return projectForCaller(role, embryo);
+export async function getById(
+  sql: Sql,
+  id: string,
+  opts?: { includeDeleted?: boolean; allowedEmbryoIds?: string[]; clinicId?: string },
+) {
+  if (opts?.includeDeleted) {
+    return repo.findByIdIncludeDeleted(sql, id);
+  }
+  return repo.findById(sql, id, {
+    ...(opts?.clinicId !== undefined ? { clinicId: opts.clinicId } : {}),
+    ...(opts?.allowedEmbryoIds !== undefined ? { allowedIds: opts.allowedEmbryoIds } : {}),
+  });
 }
 
 export async function list(
   sql: Sql,
-  filters: { clinic_id?: string; status?: string },
-  role: Role,
+  filters: { clinic_id?: string; status?: string; include_deleted?: boolean },
+  opts?: { allowedEmbryoIds?: string[] },
 ) {
-  const embryos = await repo.findAll(sql, {
+  return repo.findAll(sql, {
     ...filters,
-    include_deleted: role === "admin",
+    ...(opts?.allowedEmbryoIds !== undefined ? { embryoIds: opts.allowedEmbryoIds } : {}),
   });
-  return embryos.map((e) => projectForCaller(role, e));
 }
 
 export async function createRecord(
   sql: Sql,
   payload: unknown,
   clinicId: string,
-  role: Role,
+  caller: Pick<CallerContext, "role">,
 ) {
-  if (role === "patient") throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
-
   const parsed = CreateEmbryoSchema.safeParse(payload);
   if (!parsed.success) {
     throw Object.assign(new Error("Validation failed"), {
@@ -44,7 +47,7 @@ export async function createRecord(
   }
 
   const embryo = await repo.create(sql, parsed.data as z.infer<typeof CreateEmbryoSchema>, clinicId);
-  return projectForCaller(role, embryo);
+  return projectForCaller(caller.role, embryo);
 }
 
 const PERMITTED_TRANSITIONS: Record<string, string[]> = {
@@ -57,10 +60,8 @@ export async function changeStatus(
   sql: Sql,
   id: string,
   newStatus: string,
-  role: Role,
+  caller: Pick<CallerContext, "role">,
 ) {
-  if (role === "patient") throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
-
   const embryo = await repo.findById(sql, id);
   if (!embryo) throw Object.assign(new Error("Not found"), { statusCode: 404 });
 
@@ -75,16 +76,15 @@ export async function changeStatus(
   const updated = await repo.updateStatus(sql, id, newStatus);
   if (!updated) throw Object.assign(new Error("Not found"), { statusCode: 404 });
 
-  return projectForCaller(role, updated);
+  return projectForCaller(caller.role, updated);
 }
 
 export async function updateRecord(
   sql: Sql,
   id: string,
   patch: Record<string, unknown>,
-  role: Role,
+  caller: Pick<CallerContext, "role">,
 ) {
-  if (role === "patient") throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
   if ("status" in patch) {
     throw Object.assign(
       new Error("Use PATCH /status to change status"),
@@ -98,12 +98,10 @@ export async function updateRecord(
   const updated = await repo.update(sql, id, patch as Parameters<typeof repo.update>[2]);
   if (!updated) throw Object.assign(new Error("Not found"), { statusCode: 404 });
 
-  return projectForCaller(role, updated);
+  return projectForCaller(caller.role, updated);
 }
 
-export async function softDelete(sql: Sql, id: string, role: Role) {
-  if (role !== "admin") throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
-
+export async function softDelete(sql: Sql, id: string) {
   const embryo = await repo.findById(sql, id);
   if (!embryo) throw Object.assign(new Error("Not found"), { statusCode: 404 });
 

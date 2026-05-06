@@ -96,9 +96,19 @@ function rowToEmbryo(row: EmbryoRow): Embryo {
   }) as unknown as Embryo;
 }
 
-export async function findById(sql: Sql, id: string): Promise<Embryo | null> {
+export async function findById(
+  sql: Sql,
+  id: string,
+  opts?: { allowedIds?: string[]; clinicId?: string },
+): Promise<Embryo | null> {
   const rows = await sql<EmbryoRow[]>`
-    SELECT * FROM embryos WHERE id = ${id} AND meta_deleted_at IS NULL
+    SELECT * FROM embryos
+    WHERE id = ${id}
+      AND meta_deleted_at IS NULL
+      ${opts?.clinicId !== undefined ? sql`AND clinic_id = ${opts.clinicId}` : sql``}
+      ${opts?.allowedIds && opts.allowedIds.length > 0
+        ? sql`AND id = ANY(${sql.array(opts.allowedIds, 2950)})`
+        : sql``}
   `;
   if (rows.length === 0) return null;
   return rowToEmbryo(rows[0]!);
@@ -112,7 +122,7 @@ export async function findByIdIncludeDeleted(sql: Sql, id: string): Promise<Embr
 
 export async function findAll(
   sql: Sql,
-  filters: { clinic_id?: string; status?: string; include_deleted?: boolean } = {},
+  filters: { clinic_id?: string; status?: string; include_deleted?: boolean; embryoIds?: string[] } = {},
 ): Promise<Embryo[]> {
   const rows = await sql<EmbryoRow[]>`
     SELECT * FROM embryos
@@ -120,6 +130,9 @@ export async function findAll(
       ${filters.clinic_id ? sql`AND clinic_id = ${filters.clinic_id}` : sql``}
       ${filters.status ? sql`AND status = ${filters.status}` : sql``}
       ${!filters.include_deleted ? sql`AND meta_deleted_at IS NULL` : sql``}
+      ${filters.embryoIds && filters.embryoIds.length > 0
+        ? sql`AND id = ANY(${sql.array(filters.embryoIds, 2950)})`
+        : sql``}
     ORDER BY creation_date DESC
   `;
   return rows.map(rowToEmbryo);
