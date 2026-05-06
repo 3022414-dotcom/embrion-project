@@ -156,7 +156,8 @@ middleware and handlers. Lives in `apps/api/src/middleware/auth-hook.ts`.
 ```typescript
 // apps/api/src/middleware/auth-hook.ts
 export type CallerContext =
-  | { role: 'coordinator' | 'admin'; sub: string; clinic_id: string }
+  | { role: 'coordinator'; sub: string; clinic_id: string }
+  | { role: 'admin'; sub: string; clinic_id?: string }
   | { role: 'patient'; sub: string; clinic_id: string; selection_id: string; embryo_ids: string[] };
 
 // FastifyRequest augmentation (replaces F-01's jwtPayload)

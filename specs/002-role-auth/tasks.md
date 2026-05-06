@@ -43,9 +43,10 @@ Tests MUST be written first and MUST fail before implementation begins.
       event CHECK constraint with 6 values, actor_id, actor_role, occurred_at, ip_address);
       all indexes from data-model.md included.
 - [ ] T002 [P] Create `apps/api/src/middleware/auth-hook.ts` — stub only: export empty
-      `buildAuthHook` function and `CallerContext` union type as defined in data-model.md
-      (`{ role: 'coordinator'|'admin'; sub: string; clinic_id: string }` |
-      `{ role: 'patient'; sub: string; clinic_id: string; selection_id: string; embryo_ids: string[] }`);
+      `buildAuthHook` function and `CallerContext` three-way union type per data-model.md:
+      `{ role: 'coordinator'; sub: string; clinic_id: string }` |
+      `{ role: 'admin'; sub: string; clinic_id?: string }` |
+      `{ role: 'patient'; sub: string; clinic_id: string; selection_id: string; embryo_ids: string[] }`;
       add `caller?: CallerContext` to `FastifyRequest` augmentation.
 - [ ] T003 [P] Create `apps/api/src/middleware/require-role.ts` — stub only: export empty
       `requireRole` function signature `(...allowed: Role[]) => preHandlerHookHandler`.
@@ -136,7 +137,7 @@ Tests MUST be written first and MUST fail before implementation begins.
 
 ## Phase 3: User Story 1 — Patient accesses selection via token-link (Priority: P1) 🎯 MVP
 
-**Goal**: Patient presents opaque token → sees only the embryos in their doctor-curated selection. All F-01 field projections still applied.
+**Goal**: Patient presents opaque token → sees only the embryos in their coordinator-curated selection. All F-01 field projections still applied.
 **Independent Test**: Issue a token for a patient with a 3-embryo selection → `GET /api/v1/embryos` returns exactly those 3 embryos → `GET /api/v1/embryos/:id` for an embryo outside the selection → 404 → expire the token → retry any request → 401.
 
 ### Tests for US1 — write first, must fail ⚠️
@@ -196,14 +197,15 @@ Tests MUST be written first and MUST fail before implementation begins.
       all behind `requireRole('coordinator', 'admin')` preHandler (except where noted):
       `POST /api/v1/patients` → validate body, call `patient.repository.create` with
       `clinicId` from `request.caller.clinic_id`;
-      `GET /api/v1/patients/:id/selection` → call `selection.repository.findByPatientId`;
-      return 404 if not found;
-      `PATCH /api/v1/patients/:id/selection` → validate `embryo_ids` array in body; call
-      `selection.repository.updateEmbryoIds` (creates if not exists);
-      `POST /api/v1/patients/:id/token` → validate `ttl_days` (1–365, default 30); call
-      `auth.service.issueToken`; return 201 with token_value and expires_at;
-      `DELETE /api/v1/patients/:id/token` → call `auth.service.revokeToken`; return 204
-      (idempotent — 204 even if no active token).
+      `GET /api/v1/patients/:id/selection` → call `patient.repository.findById(sql, id, request.caller.clinic_id)`
+      first — return 404 if null (enforces clinic ownership for coordinator; admin passes undefined);
+      then call `selection.repository.findByPatientId`; return 404 if no selection yet;
+      `PATCH /api/v1/patients/:id/selection` → same patient ownership check via `patient.repository.findById`;
+      validate `embryo_ids` array in body; call `selection.repository.updateEmbryoIds` (creates if not exists);
+      `POST /api/v1/patients/:id/token` → same patient ownership check; validate `ttl_days`
+      (1–365, default 30); call `auth.service.issueToken`; return 201 with token_value and expires_at;
+      `DELETE /api/v1/patients/:id/token` → same patient ownership check; call
+      `auth.service.revokeToken`; return 204 (idempotent — 204 even if no active token).
 - [ ] T023 [US2] Modify `apps/api/src/modules/embryo/embryo.router.ts` — add `preHandler`
       per permissions matrix: `POST /api/v1/embryos` → `requireRole('coordinator','admin')`;
       `PATCH /api/v1/embryos/:id` → `requireRole('coordinator','admin')`;
@@ -250,12 +252,14 @@ Tests MUST be written first and MUST fail before implementation begins.
       that `findAll` and `findById` skip the clinic_id filter when `clinicId` is `undefined`
       (the admin path). No new code should be needed if T024 implemented correctly; add a
       targeted integration test assertion if the behaviour is unclear.
-- [ ] T029 [US3] Modify `apps/api/src/modules/auth/auth.router.ts` — two admin-specific
-      adjustments: (1) `POST /api/v1/patients` when `request.caller.role === 'admin'`: accept
-      `clinic_id` from request body (admin has no JWT clinic_id); (2) patient ownership
-      check in `GET/PATCH /patients/:id/selection`, `POST/DELETE /patients/:id/token`: for
-      coordinator, verify `patient.clinic_id === request.caller.clinic_id` → 404 if
-      mismatch; for admin, skip clinic check.
+- [ ] T029 [US3] Modify `apps/api/src/modules/auth/auth.router.ts` — admin-specific
+      adjustment: `POST /api/v1/patients` when `request.caller.role === 'admin'`, accept
+      `clinic_id` from request body (admin has no JWT `clinic_id`); validate `clinic_id`
+      is present in body and non-empty — return 400 if missing. Note: the ownership check
+      for all other patient routes (GET/PATCH selection, POST/DELETE token) is already
+      handled by passing `request.caller.clinic_id` to `patient.repository.findById` in
+      T022 — `undefined` for admin causes the clinic filter to be skipped (no code change
+      needed here).
 - [ ] T030 [US3] Run T027 tests — must pass. Fix until fully green.
 
 **Checkpoint**: Admin has cross-clinic read/write. Coordinator correctly blocked from other clinics' patient records. ✅ US3 independently testable.
@@ -283,6 +287,14 @@ Tests MUST be written first and MUST fail before implementation begins.
 - [ ] T035 [P] Write SC-001 benchmark assertion in `apps/api/tests/integration/auth-middleware.test.ts`
       — add a test that presents an expired token and asserts total response time < 100 ms
       (use `performance.now()` before/after the Supertest call).
+- [ ] T036 [P] Write SC-003 route coverage audit in `apps/api/tests/integration/auth-route-coverage.test.ts`
+      — enumerate all routes registered on the Fastify app and assert that each non-public
+      route has `requireRole` in its `preHandler` chain; protected routes to verify:
+      `GET /api/v1/embryos`, `GET /api/v1/embryos/:id`, `POST /api/v1/embryos`,
+      `PATCH /api/v1/embryos/:id`, `PATCH /api/v1/embryos/:id/status`,
+      `POST /api/v1/embryos/:id/delete`, `POST /api/v1/patients`,
+      `GET /api/v1/patients/:id/selection`, `PATCH /api/v1/patients/:id/selection`,
+      `POST /api/v1/patients/:id/token`, `DELETE /api/v1/patients/:id/token`.
 
 ---
 

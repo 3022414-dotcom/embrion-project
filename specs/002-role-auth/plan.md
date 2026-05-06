@@ -27,7 +27,9 @@ test JWTs signed with `signTestToken()` helper already in `apps/api/tests/helper
 **Target Platform**: Linux server (Node.js 20 LTS) — same as F-01
 **Project Type**: Web application — monorepo extension (backend API only for F-02)
 **Performance Goals**: Token 401 response < 100 ms (SC-001); all existing embryo endpoint
-p95 targets unchanged (< 200 ms per F-01)
+p95 targets unchanged (< 200 ms per F-01); new auth endpoints (POST /patients,
+POST /patients/:id/token, GET/PATCH /patients/:id/selection) expected under 200 ms p95
+(single indexed DB query each) — formal load benchmarks deferred to post-launch monitoring
 **Constraints**: No new npm packages required; `clinic_id` never sourced from request body
 (always from JWT claim); patient token stored as raw hex (256-bit entropy — see research.md
 Decision 2); F-03 owns coordinator/admin login and JWT issuance
