@@ -16,3 +16,16 @@ export function signTestToken(
   );
   return `${header}.${body}.${sig}`;
 }
+
+/** Sign a coordinator JWT — clinic_id is required. */
+export function signCoordinatorToken(
+  opts: { sub: string; clinic_id: string },
+  secret: string,
+): string {
+  return signTestToken({ role: "coordinator", sub: opts.sub, clinic_id: opts.clinic_id }, secret);
+}
+
+/** Sign an admin JWT — no clinic_id. */
+export function signAdminToken(opts: { sub: string }, secret: string): string {
+  return signTestToken({ role: "admin", sub: opts.sub }, secret);
+}
