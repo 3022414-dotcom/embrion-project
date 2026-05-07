@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/002-role-auth/plan.md
+specs/003-coordinator-auth/plan.md
 <!-- SPECKIT END -->
 
 ## Project Vision
