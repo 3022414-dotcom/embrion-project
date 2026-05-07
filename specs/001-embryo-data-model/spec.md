@@ -8,18 +8,18 @@ statuses, donor field inheritance rules, storage-level validation)
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 — Doctor/Coordinator curates embryo catalog for a patient (Priority: P1)
+### User Story 1 — Coordinator curates embryo catalog for a patient (Priority: P1)
 
-A doctor opens the clinic's admin interface, views a list of available embryos, and
+A coordinator opens the clinic's admin interface, views a list of available embryos, and
 confirms that the data displayed matches the agreed data model: all required fields are
 present, status is correct, and sensitive fields (embryo sex, extended genetics) are
-visible to the doctor but not exposed to patients.
+visible to the coordinator but not exposed to patients.
 
 **Why this priority**: The data model is the foundation of every downstream feature. Without
 a well-defined and validated embryo record, the catalog, filtering, and selection flows
 cannot function correctly.
 
-**Independent Test**: A doctor with coordinator-level access can retrieve a full embryo
+**Independent Test**: A coordinator can retrieve a full embryo
 record and see all fields including `sex`, `chromosomal_abnormalities`, and internal IDs.
 The test is complete when a patient-role retrieval of the same record returns the same
 embryo without restricted fields.
@@ -27,7 +27,7 @@ embryo without restricted fields.
 **Acceptance Scenarios**:
 
 1. **Given** an embryo record stored in the system,
-   **When** a doctor (coordinator role) retrieves it,
+   **When** a coordinator retrieves it,
    **Then** all fields including `sex`, internal IDs, and extended genetics are returned.
 
 2. **Given** an embryo record with `sex` populated,
@@ -241,8 +241,7 @@ retrievable immediately after creation.
 
 - The data model described in `summary.md` is the authoritative source of truth for field
   enumeration; no additional fields are in scope for this feature.
-- "Coordinator" and "Doctor" roles share the same field visibility level for the purposes
-  of this feature (both can see all fields including `sex`).
+- The `coordinator` role has full field visibility for the purposes of this feature (can see all fields including `sex`).
 - Phenotype inheritance applies only to fields that are absent in the submitted record;
   explicitly provided values are never overwritten by inheritance logic.
 - The schema versioning mechanism does not require automatic record migration tooling in
