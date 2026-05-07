@@ -1,7 +1,7 @@
-# Specification Quality Checklist: F-02 — Role Model and Authorization
+# Specification Quality Checklist: F-03 — Coordinator and Admin Authentication
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-05-05
+**Created**: 2026-05-06
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,10 +31,4 @@
 
 ## Notes
 
-- FR-001–FR-006: Patient token access flow — complete
-- FR-007–FR-010: Role definitions — all 3 roles specified with distinct permission scopes
-- FR-011–FR-014: Middleware enforcement — server-side requirement explicit in SC-006
-- FR-015–FR-017: Clinic isolation — 404-not-403 pattern for cross-clinic resources is intentional (privacy)
-- FR-018–FR-020: Token lifecycle — issuance, revocation, audit logging covered
-- Assumption: Coordinator authentication session mechanism is deferred to a future feature (F-03 or equivalent)
-- Assumption: Token delivery mechanism (email/SMS) is out of scope for F-02
+All checklist items pass. Spec is ready for `/speckit-plan`.

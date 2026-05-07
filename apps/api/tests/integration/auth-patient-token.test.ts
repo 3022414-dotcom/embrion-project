@@ -10,6 +10,7 @@ const MIGRATIONS = [
   join(__dirname, "../../src/db/migrations/001_embryo_schema.sql"),
   join(__dirname, "../../src/db/migrations/002_embryo_status_log.sql"),
   join(__dirname, "../../src/db/migrations/003_auth_schema.sql"),
+  join(__dirname, "../../src/db/migrations/004_users.sql"),
 ];
 
 const JWT_SECRET = "test-secret";
@@ -38,6 +39,12 @@ beforeAll(async () => {
   }
 
   app = await buildApp({ sql, jwtSecret: JWT_SECRET });
+
+  // F-03: insert coordinator user so auth-hook is_active check passes
+  await sql`
+    INSERT INTO users (id, email, password_hash, role, clinic_id, is_active) VALUES
+      ('coord-1', 'coord-1@clinic.test', 'test-hash', 'coordinator', 'clinic-a', true)
+  `;
 
   // Create 3 embryos in clinic-a via the API
   const mkEmbryo = async () => {

@@ -67,7 +67,7 @@ onRequest:
 
 **Decision**: PostgreSQL `UUID[]` array column (`embryo_ids`) in `patient_selections`.
 
-**Rationale**: Preserves doctor-defined ordering naturally. Array append/remove is O(n) but
+**Rationale**: Preserves coordinator-defined ordering naturally. Array append/remove is O(n) but
 at clinic scale (5–50 embryos per selection) this is negligible. Membership check via
 `= ANY(embryo_ids)` is supported by a GIN index. No join required for the common access
 pattern (load selection, then filter embryo query to those IDs).

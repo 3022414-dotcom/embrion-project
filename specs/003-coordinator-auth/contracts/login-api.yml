@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: Embrion API — F-03 Login Endpoint
+  version: "1.0"
+  description: >
+    Credential-based authentication for coordinators and admins.
+    On success returns a JWT whose payload matches the { sub, role, clinic_id }
+    contract established in F-02 and verified by auth-hook.ts.
+
+servers:
+  - url: /api/v1
+
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate coordinator or admin
+      description: >
+        Accepts email and password. Verifies credentials against the users table.
+        Enforces rate limiting (5 failures per email within 15 minutes → 429).
+        Returns a signed JWT valid for 8 hours.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              coordinator:
+                summary: Coordinator login
+                value:
+                  email: coordinator@clinic.test
+                  password: password123
+              admin:
+                summary: Admin login
+                value:
+                  email: admin@clinic.test
+                  password: password123
+      responses:
+        "200":
+          description: Authentication successful — JWT returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "400":
+          description: Missing or malformed request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "email and password are required"
+        "401":
+          description: Invalid credentials (wrong password, unknown email, or inactive account)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid credentials"
+        "429":
+          description: Rate limit exceeded — too many failed attempts for this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+              example:
+                error: "Too many attempts"
+                retry_after_seconds: 547
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Account email address (case-insensitive)
+          example: coordinator@clinic.test
+        password:
+          type: string
+          minLength: 1
+          description: Account password (plaintext — transmitted over HTTPS only)
+          example: password123
+
+    LoginResponse:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: >
+            Signed JWT. Payload contains { sub, role, clinic_id } for coordinators
+            and { sub, role } for admins. Expiry: 8 hours from issuance.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message (intentionally generic for 401)
+
+    RateLimitResponse:
+      type: object
+      required:
+        - error
+        - retry_after_seconds
+      properties:
+        error:
+          type: string
+          example: "Too many attempts"
+        retry_after_seconds:
+          type: integer
+          description: >
+            Seconds until the rate-limit window resets for this email.
+            Computed as 900 - seconds_since_first_recent_failed_attempt.
+          example: 547
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT issued by POST /api/v1/auth/login. Include as
+        Authorization: Bearer <token> on all protected endpoints.

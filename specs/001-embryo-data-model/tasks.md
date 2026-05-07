@@ -74,7 +74,7 @@ All user stories depend on this phase. No US work begins until T022 is complete.
 
 ---
 
-## Phase 3: User Story 1 — Doctor retrieves full embryo record (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 — Coordinator retrieves full embryo record (Priority: P1) 🎯 MVP
 
 **Goal**: Coordinator/Admin can retrieve full embryo record with all fields. Role projection applied.
 **Independent Test**: A coordinator bearer token → `GET /api/v1/embryos/:id` returns all fields including `sex`, `chromosomal_abnormalities`, internal `id`. Admin token → same result plus `deleted_at`.
@@ -201,7 +201,7 @@ T021, T022  # US1 tests in parallel
 
 1. Complete Phase 1: Setup
 2. Complete Phase 2: Foundational (CRITICAL — blocks all stories)
-3. Complete Phase 3: US1 (Doctor retrieves full embryo record)
+3. Complete Phase 3: US1 (Coordinator retrieves full embryo record)
 4. **STOP and VALIDATE**: `GET /api/v1/embryos/:id` with coordinator token returns correct full record
 5. Coordinator can see `sex`, `chromosomal_abnormalities`, all meta fields ✅
 

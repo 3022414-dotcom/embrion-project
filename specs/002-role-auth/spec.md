@@ -118,7 +118,7 @@ An administrator uses the management interface to create patient access tokens, 
 
 **Role Definitions**
 
-- **FR-007**: System MUST support exactly three roles: `patient`, `coordinator` (covers both doctors and coordinators — matches the role name already established in F-01), and `admin`.
+- **FR-007**: System MUST support exactly three roles: `patient`, `coordinator`, and `admin` — the canonical names established in F-01.
 - **FR-008**: Role `patient` grants read-only access exclusively to the embryos included in the patient's coordinator-curated selection — no other embryos are accessible. Field projection from F-01 visibility matrix is applied (embryo sex, internal IDs, and extended genetics are hidden).
 - **FR-009**: Role `coordinator` grants: read and write access to embryo records within their clinic; ability to create and update patient selections (curated embryo pools); ability to generate and revoke patient access tokens; visibility of all embryo fields including those hidden from patients (sex, chromosomal abnormalities, extended genetics, internal IDs).
 - **FR-010**: Role `admin` grants full system access: user management, clinic configuration, token lifecycle management, embryo status changes, and cross-clinic read access for audit and analytics purposes.
@@ -170,7 +170,7 @@ An administrator uses the management interface to create patient access tokens, 
 ## Assumptions
 
 - Coordinator authentication (login with credentials) is out of scope for F-02; this feature assumes coordinators and admins have a working session mechanism (to be implemented in F-03 or equivalent). F-02 focuses on the patient token-link flow and the role enforcement layer.
-- The role name `coordinator` (not `doctor`) is used throughout the system to cover both doctors and coordinators — this is the canonical name established in F-01 (`packages/schema/src/embryo.types.ts`) and must not be changed. The product UI may display "Doctor / Coordinator" as a label, but the system role string is `coordinator`.
+- The system role name `coordinator` is the canonical name established in F-01 (`packages/schema/src/embryo.types.ts`) and must not be changed. The product UI may use a localized display label, but the code role string is always `coordinator`.
 - A patient selection is always created before a token is issued: a coordinator must first curate embryos and then generate a link. Issuing a token without an associated selection is not allowed.
 - The UI for creating and editing a patient selection (adding/removing embryos) is a future catalog feature; F-02 defines the authorization boundary and data model for selections but does not include the management UI.
 - The system is designed to support multiple clinics in one deployment (as established in F-01); F-02 enforces this boundary at the authorization layer.

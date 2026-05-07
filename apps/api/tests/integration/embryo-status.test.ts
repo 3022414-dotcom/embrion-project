@@ -7,10 +7,11 @@ import { buildApp } from "../../src/app.js";
 import { create } from "../../src/modules/embryo/embryo.repository.js";
 import { signTestToken } from "../helpers/auth.js";
 
-const MIGRATION_PATH = join(
-  __dirname,
-  "../../src/db/migrations/001_embryo_schema.sql",
-);
+const MIGRATIONS = [
+  join(__dirname, "../../src/db/migrations/001_embryo_schema.sql"),
+  join(__dirname, "../../src/db/migrations/002_embryo_status_log.sql"),
+  join(__dirname, "../../src/db/migrations/004_users.sql"),
+];
 
 let sql: postgres.Sql;
 let container: Awaited<ReturnType<typeof PostgreSqlContainer.prototype.start>>;
@@ -27,9 +28,16 @@ const seedInput = {
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine").start();
   sql = postgres(container.getConnectionUri());
-  const migration = await readFile(MIGRATION_PATH, "utf8");
-  await sql.unsafe(migration);
+  for (const path of MIGRATIONS) {
+    const migration = await readFile(path, "utf8");
+    await sql.unsafe(migration);
+  }
   app = await buildApp({ sql, jwtSecret: "test-secret" });
+  // F-03: insert coordinator user so auth-hook is_active check passes
+  await sql`
+    INSERT INTO users (id, email, password_hash, role, clinic_id, is_active) VALUES
+      ('coord-1', 'coord-1@clinic.test', 'test-hash', 'coordinator', 'default-clinic', true)
+  `;
 }, 90_000);
 
 afterAll(async () => {
@@ -87,7 +95,7 @@ describe("PATCH /api/v1/embryos/:id/status — coordinator transitions", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("patient PATCH status returns 403", async () => {
+  it("patient JWT returns 401 (patient tokens are opaque, not JWTs)", async () => {
     const embryo = await create(sql, seedInput, "clinic-status-test");
     const res = await app.inject({
       method: "PATCH",
@@ -95,6 +103,6 @@ describe("PATCH /api/v1/embryos/:id/status — coordinator transitions", () => {
       headers: { authorization: `Bearer ${patientToken}`, "content-type": "application/json" },
       body: JSON.stringify({ status: "reserved" }),
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(401);
   });
 });

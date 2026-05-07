@@ -2,7 +2,7 @@
 
 ## Overview
 
-A web application for a reproductive medicine clinic that helps patients select a donor embryo. The app provides a personalized, structured, and transparent decision-making experience — reducing uncertainty for patients while keeping the process medically controlled by doctors.
+A web application for a reproductive medicine clinic that helps patients select a donor embryo. The app provides a personalized, structured, and transparent decision-making experience — reducing uncertainty for patients while keeping the process medically controlled by coordinators.
 
 ---
 
@@ -17,7 +17,7 @@ A web application for a reproductive medicine clinic that helps patients select 
 
 ## Access Flow
 
-Access is not self-registered. A doctor:
+Access is not self-registered. A coordinator:
 1. Reviews the patient's case and curates a pool of compatible embryos
 2. Generates a unique, time-limited, patient-bound link
 3. Sends the link via email or messenger
@@ -30,7 +30,7 @@ The patient follows the link and lands directly in their personalized catalog.
 
 | # | Scenario | Description |
 |---|----------|-------------|
-| 0 | Access | Doctor creates a selection and sends a unique link to the patient |
+| 0 | Access | Coordinator creates a selection and sends a unique link to the patient |
 | 1 | Browse & Filter | Patient filters by donor eye color, height, ethnicity, genetics; views cards; saves favorites |
 | 2 | Risk Review | Patient opens an embryo card and reviews genetic screening results and donor medical data |
 | 3 | Submit Request | Patient selects an embryo and submits an inquiry to the clinic |
@@ -71,14 +71,14 @@ System role names (canonical, used in code): `patient`, `coordinator`, `admin`.
 | Role (`coordinator` in code) | Capabilities | Hidden from patients |
 |------|-------------|----------------------|
 | **Patient** | Browse catalog, filter, view cards, favorite, submit request, chat | Embryo sex, sensitive medical data, internal IDs |
-| **Coordinator** (doctors and coordinators share this role) | Everything patient can + create selections, generate links, receive requests, reply in chat, view analytics, see hidden fields (sex, extended genetics) | — |
+| **Coordinator** | Everything patient can + create selections, generate links, receive requests, reply in chat, view analytics, see hidden fields (sex, extended genetics) | — |
 | **Admin** | Everything coordinator can + manage embryo/donor data, change embryo status, access logs and metrics | — |
 
 ---
 
 ## Authorization
 
-- Access is granted via a doctor-generated link
+- Access is granted via a coordinator-generated link
 - Links are time-limited and bound to a specific patient
 
 ---

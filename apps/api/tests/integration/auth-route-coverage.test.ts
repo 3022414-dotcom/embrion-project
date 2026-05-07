@@ -14,6 +14,7 @@ const MIGRATIONS = [
   join(__dirname, "../../src/db/migrations/001_embryo_schema.sql"),
   join(__dirname, "../../src/db/migrations/002_embryo_status_log.sql"),
   join(__dirname, "../../src/db/migrations/003_auth_schema.sql"),
+  join(__dirname, "../../src/db/migrations/004_users.sql"),
 ];
 
 let sql: postgres.Sql;
@@ -56,6 +57,7 @@ const PUBLIC_ROUTES: [string, string][] = [
   ["GET", "/api/v1/embryos"],
   ["GET", "/api/v1/embryos/:id"],
   ["GET", "/api/v1/schema/manifest"],
+  ["POST", "/api/v1/auth/login"], // truly public — no auth header required
 ];
 
 describe("SC-003 — role middleware coverage", () => {
@@ -100,7 +102,7 @@ describe("SC-003 — role middleware coverage", () => {
 
   it("public routes reject unauthenticated requests with 401 (global auth hook)", async () => {
     for (const [method, url] of PUBLIC_ROUTES) {
-      if (url === "/api/v1/schema/manifest") continue; // truly public, no auth required
+      if (url === "/api/v1/schema/manifest" || url === "/api/v1/auth/login") continue; // truly public — no auth header required
       const res = await app.inject({ method, url });
       expect(res.statusCode, `${method} ${url} expected 401`).toBe(401);
     }
