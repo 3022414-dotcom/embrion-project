@@ -3,6 +3,7 @@ import fastifyJwt from "@fastify/jwt";
 import type postgres from "postgres";
 import { embryoRouter } from "./modules/embryo/embryo.router.js";
 import { authRouter } from "./modules/auth/auth.router.js";
+import { loginRouter } from "./modules/auth/login.router.js";
 import { buildAuthHook } from "./middleware/auth-hook.js";
 
 export async function buildApp(opts: { sql: postgres.Sql; jwtSecret: string }) {
@@ -14,6 +15,7 @@ export async function buildApp(opts: { sql: postgres.Sql; jwtSecret: string }) {
 
   await app.register(embryoRouter, { sql: opts.sql });
   await app.register(authRouter, { sql: opts.sql });
+  await app.register(loginRouter, { sql: opts.sql });
 
   return app;
 }

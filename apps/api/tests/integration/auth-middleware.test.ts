@@ -13,6 +13,7 @@ const MIGRATIONS = [
   join(__dirname, "../../src/db/migrations/001_embryo_schema.sql"),
   join(__dirname, "../../src/db/migrations/002_embryo_status_log.sql"),
   join(__dirname, "../../src/db/migrations/003_auth_schema.sql"),
+  join(__dirname, "../../src/db/migrations/004_users.sql"),
 ];
 
 let sql: postgres.Sql;
@@ -29,6 +30,13 @@ beforeAll(async () => {
     const migration = await readFile(path, "utf8");
     await sql.unsafe(migration);
   }
+
+  // F-03: insert users so auth-hook is_active check passes
+  await sql`
+    INSERT INTO users (id, email, password_hash, role, clinic_id, is_active) VALUES
+      ('coord-1', 'coord-1@clinic.test', 'test-hash', 'coordinator', 'clinic-a', true),
+      ('admin-1',  'admin@clinic.test',  'test-hash', 'admin',       NULL,       true)
+  `;
 
   // Build a custom test app (not buildApp) to test auth hooks in isolation
   app = Fastify({ logger: false });
