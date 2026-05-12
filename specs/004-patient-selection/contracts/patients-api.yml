@@ -1,0 +1,226 @@
+openapi: "3.1.0"
+info:
+  title: F-04 Patient Selection API
+  version: "1.0.0"
+  description: Coordinator-facing endpoints for patient list and selection status.
+
+servers:
+  - url: /api/v1
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SelectionSummary:
+      type: object
+      description: >
+        Selection state visible to coordinator. Present when a selection exists for the patient,
+        null otherwise.
+      required:
+        - opened_at
+        - token_expires_at
+      properties:
+        opened_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Timestamp of first patient access via token. null until patient opens their
+            selection for the first time. Immutable after first set.
+          example: "2026-05-10T14:30:00Z"
+        token_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Expiry of the currently active (non-revoked, non-expired) access token.
+            null if no active token exists.
+          example: "2026-06-07T14:30:00Z"
+
+    SelectionDetail:
+      allOf:
+        - $ref: "#/components/schemas/SelectionSummary"
+        - type: object
+          required:
+            - embryo_ids
+          properties:
+            embryo_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Ordered list of embryo UUIDs in the patient's selection.
+              example:
+                - "550e8400-e29b-41d4-a716-446655440001"
+                - "550e8400-e29b-41d4-a716-446655440002"
+
+    PatientListItem:
+      type: object
+      required:
+        - id
+        - clinic_id
+        - created_at
+        - selection
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          nullable: true
+          example: "Анна Иванова"
+        clinic_id:
+          type: string
+          example: "clinic-001"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-05-01T09:00:00Z"
+        selection:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/SelectionSummary"
+            - type: "null"
+
+    PatientDetail:
+      type: object
+      required:
+        - id
+        - clinic_id
+        - created_at
+        - selection
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        clinic_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        selection:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/SelectionDetail"
+            - type: "null"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "clinic_id is required for admin"
+
+paths:
+  /patients:
+    get:
+      summary: List patients (coordinator — own clinic; admin — requires ?clinic_id)
+      operationId: listPatients
+      tags:
+        - patients
+      parameters:
+        - name: clinic_id
+          in: query
+          required: false
+          description: >
+            Required when caller role is `admin`. Ignored for `coordinator`
+            (clinic derived from JWT). Missing for admin → 400.
+          schema:
+            type: string
+          example: "clinic-001"
+      responses:
+        "200":
+          description: Array of patients ordered by created_at DESC.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientListItem"
+              example:
+                - id: "550e8400-e29b-41d4-a716-446655440000"
+                  name: "Анна Иванова"
+                  clinic_id: "clinic-001"
+                  created_at: "2026-05-01T09:00:00Z"
+                  selection:
+                    opened_at: null
+                    token_expires_at: "2026-06-07T14:30:00Z"
+                - id: "550e8400-e29b-41d4-a716-446655440001"
+                  name: null
+                  clinic_id: "clinic-001"
+                  created_at: "2026-04-20T11:00:00Z"
+                  selection: null
+        "400":
+          description: Admin called without required `clinic_id` parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "clinic_id is required for admin"
+        "401":
+          description: Missing or invalid authorization token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /patients/{id}:
+    get:
+      summary: Get patient detail with full selection state
+      operationId: getPatient
+      tags:
+        - patients
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "200":
+          description: Patient with selection detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientDetail"
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                name: "Анна Иванова"
+                clinic_id: "clinic-001"
+                created_at: "2026-05-01T09:00:00Z"
+                selection:
+                  embryo_ids:
+                    - "550e8400-e29b-41d4-a716-446655440010"
+                    - "550e8400-e29b-41d4-a716-446655440011"
+                  opened_at: "2026-05-10T14:30:00Z"
+                  token_expires_at: "2026-06-07T14:30:00Z"
+        "401":
+          description: Missing or invalid authorization token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patient not found or belongs to a different clinic.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Not found"

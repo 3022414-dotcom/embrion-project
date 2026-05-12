@@ -15,6 +15,7 @@ const MIGRATIONS = [
   join(__dirname, "../../src/db/migrations/002_embryo_status_log.sql"),
   join(__dirname, "../../src/db/migrations/003_auth_schema.sql"),
   join(__dirname, "../../src/db/migrations/004_users.sql"),
+  join(__dirname, "../../src/db/migrations/005_selection_opened_at.sql"),
 ];
 
 let sql: postgres.Sql;
@@ -50,6 +51,8 @@ const PROTECTED_ROUTES: [string, string][] = [
   ["PATCH", "/api/v1/patients/:id/selection"],
   ["POST", "/api/v1/patients/:id/token"],
   ["DELETE", "/api/v1/patients/:id/token"],
+  ["GET", "/api/v1/patients"],
+  ["GET", "/api/v1/patients/:id"],
 ];
 
 // Routes that are intentionally public (authenticated via global hook, no role restriction)
