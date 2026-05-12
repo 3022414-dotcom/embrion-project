@@ -4,6 +4,7 @@ import { SCHEMA_MANIFEST } from "@embrion/schema";
 import { requireRole } from "../../middleware/require-role.js";
 import * as service from "./embryo.service.js";
 import { projectForCaller } from "./embryo.projection.js";
+import * as selectionRepo from "../auth/selection.repository.js";
 
 export async function embryoRouter(
   app: FastifyInstance,
@@ -30,6 +31,11 @@ export async function embryoRouter(
       },
       allowedEmbryoIds !== undefined ? { allowedEmbryoIds } : undefined,
     );
+
+    if (caller.role === "patient" && caller.selection_id) {
+      await selectionRepo.setOpenedAt(sql, caller.selection_id);
+    }
+
     return reply.send(embryos.map((e) => projectForCaller(caller.role, e)));
   });
 

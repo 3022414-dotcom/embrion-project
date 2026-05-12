@@ -8,6 +8,7 @@ export interface PatientSelection {
   created_by: string;
   created_at: Date;
   updated_at: Date;
+  opened_at: Date | null;
 }
 
 type Sql = postgres.Sql;
@@ -22,6 +23,7 @@ function rowToSelection(row: Row): PatientSelection {
     created_by: row["created_by"] as string,
     created_at: row["created_at"] as Date,
     updated_at: row["updated_at"] as Date,
+    opened_at: (row["opened_at"] as Date | null) ?? null,
   };
 }
 
@@ -45,6 +47,14 @@ export async function findByPatientId(
     SELECT * FROM patient_selections WHERE patient_id = ${patientId}
   `;
   return rows.length === 0 ? null : rowToSelection(rows[0]!);
+}
+
+export async function setOpenedAt(sql: Sql, selectionId: string): Promise<void> {
+  await sql`
+    UPDATE patient_selections
+    SET opened_at = NOW()
+    WHERE id = ${selectionId} AND opened_at IS NULL
+  `;
 }
 
 export async function updateEmbryoIds(

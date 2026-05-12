@@ -128,4 +128,40 @@ export async function authRouter(
       return reply.status(204).send();
     },
   );
+
+  // GET /api/v1/patients — list patients for coordinator's clinic (or admin with ?clinic_id=)
+  app.get<{ Querystring: { clinic_id?: string } }>(
+    "/api/v1/patients",
+    { preHandler: requireRole("coordinator", "admin") },
+    async (request, reply) => {
+      const caller = request.caller!;
+
+      if (caller.role === "coordinator") {
+        const patients = await patientRepo.findEnrichedByClinic(sql, caller.clinic_id);
+        return reply.send(patients);
+      }
+
+      const clinicId = (request.query as { clinic_id?: string }).clinic_id;
+      if (!clinicId) {
+        return reply.status(400).send({ error: "clinic_id is required for admin" });
+      }
+      const patients = await patientRepo.findEnrichedByClinic(sql, clinicId);
+      return reply.send(patients);
+    },
+  );
+
+  // GET /api/v1/patients/:id — patient detail with full selection state
+  app.get<{ Params: { id: string } }>(
+    "/api/v1/patients/:id",
+    { preHandler: requireRole("coordinator", "admin") },
+    async (request, reply) => {
+      const caller = request.caller!;
+      const clinicId = caller.role === "coordinator" ? caller.clinic_id : undefined;
+
+      const patient = await patientRepo.findEnrichedById(sql, request.params.id, clinicId);
+      if (!patient) return reply.status(404).send({ error: "Not found" });
+
+      return reply.send(patient);
+    },
+  );
 }
